@@ -1,8 +1,9 @@
+use std::any::Any;
+
 use comemo::{Tracked, TrackedMut};
-use ecow::{EcoString, EcoVec, eco_format};
-use typst_library::World;
+use ecow::{eco_format, EcoString, EcoVec};
 use typst_library::diag::{
-    At, HintedStrResult, SourceDiagnostic, SourceResult, Trace, Tracepoint, bail, error,
+    bail, error, At, HintedStrResult, SourceDiagnostic, SourceResult, Trace, Tracepoint,
 };
 use typst_library::engine::{Engine, Sink, Traced};
 use typst_library::foundations::{
@@ -12,13 +13,14 @@ use typst_library::foundations::{
 use typst_library::introspection::Introspector;
 use typst_library::math::LrElem;
 use typst_library::routines::Routines;
+use typst_library::World;
 use typst_syntax::ast::{self, AstNode, Ident};
 use typst_syntax::{Span, Spanned, SyntaxNode};
 use typst_utils::{LazyHash, Protected};
 
 use crate::{
-    Access, Eval, FlowEvent, Route, Vm, call_method_mut, hint_if_shadowed_std,
-    is_mutating_method,
+    call_method_mut, hint_if_shadowed_std, is_mutating_method, Access, Eval, FlowEvent,
+    Route, Vm,
 };
 
 impl Eval for ast::FuncCall<'_> {
@@ -147,18 +149,23 @@ impl Eval for ast::Closure<'_> {
             }
         }
 
+        //println!("EXTERNAL\n{:#?}\n", vm.scopes);
+
         // Collect captured variables.
-        let captured = {
+        let (captured, captured_math) = {
             let mut visitor = CapturesVisitor::new(Some(&vm.scopes), Capturer::Function);
             visitor.visit(self.to_untyped());
             visitor.finish()
         };
+
+        println!("CAPTURING: \n{:#?}", captured);
 
         // Define the closure.
         let closure = Closure {
             node: ClosureNode::Closure(self.to_untyped().clone()),
             defaults,
             captured,
+            captured_math,
             num_pos_params: self
                 .params()
                 .children()
@@ -200,6 +207,7 @@ pub fn eval_closure(
     // of captured variables we collected earlier.
     let mut scopes = Scopes::new(None);
     scopes.top = closure.captured.clone();
+    scopes.top2 = closure.captured_math.clone();
 
     // Prepare the engine.
     let introspector = Protected::from_raw(introspector);
@@ -440,6 +448,7 @@ pub struct CapturesVisitor<'a> {
     external: Option<&'a Scopes<'a>>,
     internal: Scopes<'a>,
     captures: Scope,
+    captures_math: Scope,
     capturer: Capturer,
 }
 
@@ -450,13 +459,14 @@ impl<'a> CapturesVisitor<'a> {
             external,
             internal: Scopes::new(None),
             captures: Scope::new(),
+            captures_math: Scope::new(),
             capturer,
         }
     }
 
     /// Return the scope of captured variables.
-    pub fn finish(self) -> Scope {
-        self.captures
+    pub fn finish(self) -> (Scope, Scope) {
+        (self.captures, self.captures_math)
     }
 
     /// Visit any node and collect all captured variables.
@@ -468,7 +478,7 @@ impl<'a> CapturesVisitor<'a> {
             // the expressions that contain them).
             Some(ast::Expr::Ident(ident)) => self.capture(ident.get(), Scopes::get),
             Some(ast::Expr::MathIdent(ident)) => {
-                self.capture(ident.get(), Scopes::get_in_math)
+                self.capture_math(ident.get(), Scopes::get_in_math)
             }
 
             // Code and content blocks create a scope.
@@ -583,27 +593,48 @@ impl<'a> CapturesVisitor<'a> {
             .bind(ident.get().clone(), Binding::detached(Value::None));
     }
 
-    /// Capture a variable if it isn't internal.
-    fn capture(
+    fn capture_get_binding(
         &mut self,
         ident: &EcoString,
         getter: impl FnOnce(&'a Scopes<'a>, &str) -> HintedStrResult<&'a Binding>,
-    ) {
+    ) -> Option<Binding> {
         if self.internal.get(ident).is_ok() {
-            return;
+            return None;
         }
 
         let binding = match self.external {
             Some(external) => match getter(external, ident) {
                 Ok(binding) => binding.capture(self.capturer),
-                Err(_) => return,
+                Err(_) => return None,
             },
             // The external scopes are only `None` when we are doing IDE capture
             // analysis, in which case the concrete value doesn't matter.
             None => Binding::detached(Value::None),
         };
 
-        self.captures.bind(ident.clone(), binding);
+        Some(binding)
+    }
+
+    /// Capture a variable if it isn't internal.
+    fn capture(
+        &mut self,
+        ident: &EcoString,
+        getter: impl FnOnce(&'a Scopes<'a>, &str) -> HintedStrResult<&'a Binding>,
+    ) {
+        if let Some(binding) = self.capture_get_binding(ident, getter) {
+            self.captures.bind(ident.clone(), binding);
+        }
+    }
+
+    /// Capture a variable if it isn't internal BUT MATH.
+    fn capture_math(
+        &mut self,
+        ident: &EcoString,
+        getter: impl FnOnce(&'a Scopes<'a>, &str) -> HintedStrResult<&'a Binding>,
+    ) {
+        if let Some(binding) = self.capture_get_binding(ident, getter) {
+            self.captures_math.bind(ident.clone(), binding);
+        }
     }
 }
 
@@ -619,8 +650,11 @@ mod tests {
         let root = parse(text);
         visitor.visit(&root);
 
-        let captures = visitor.finish();
+        let (captures, captures_math) = visitor.finish();
         let mut names: Vec<_> = captures.iter().map(|(k, ..)| k).collect();
+        let names_math: Vec<_> = captures_math.iter().map(|(k, ..)| k).collect();
+
+        names.extend(names_math);
         names.sort();
 
         assert_eq!(names, result);

@@ -5,15 +5,15 @@ use std::fmt::{self, Debug, Formatter};
 use std::sync::{Arc, LazyLock};
 
 use comemo::{Tracked, TrackedMut};
-use ecow::{EcoString, eco_format};
-use typst_syntax::{Span, SyntaxNode, ast};
-use typst_utils::{LazyHash, Static, singleton};
+use ecow::{eco_format, EcoString};
+use typst_syntax::{ast, Span, SyntaxNode};
+use typst_utils::{singleton, LazyHash, Static};
 
-use crate::diag::{At, DeprecationSink, SourceResult, StrResult, bail};
+use crate::diag::{bail, At, DeprecationSink, SourceResult, StrResult};
 use crate::engine::Engine;
 use crate::foundations::{
-    Args, Bytes, CastInfo, Content, Context, Element, IntoArgs, PluginFunc, Scope,
-    Selector, Type, Value, cast, repr, scope, ty,
+    cast, repr, scope, ty, Args, Bytes, CastInfo, Content, Context, Element, IntoArgs,
+    PluginFunc, Scope, Selector, Type, Value,
 };
 
 /// A mapping from argument values to a return value.
@@ -595,6 +595,8 @@ pub struct Closure {
     pub defaults: Vec<Value>,
     /// Captured values from outer scopes.
     pub captured: Scope,
+    /// Captured values from outer scopes BUT MATH.
+    pub captured_math: Scope,
     /// The number of positional parameters in the closure.
     pub num_pos_params: usize,
 }

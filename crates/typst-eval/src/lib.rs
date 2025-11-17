@@ -14,24 +14,26 @@ mod methods;
 mod rules;
 mod vm;
 
-pub use self::call::{CapturesVisitor, eval_closure};
+pub use self::call::{eval_closure, CapturesVisitor};
 pub use self::flow::FlowEvent;
 pub use self::import::import;
-pub use self::vm::{Vm, hint_if_shadowed_std};
+pub use self::vm::{hint_if_shadowed_std, Vm};
 
 use self::access::*;
 use self::binding::*;
 use self::methods::*;
 
 use comemo::{Track, Tracked, TrackedMut};
-use typst_library::World;
-use typst_library::diag::{SourceResult, bail};
+use typst_library::diag::{bail, SourceResult};
 use typst_library::engine::{Engine, Route, Sink, Traced};
 use typst_library::foundations::{Context, Module, NativeElement, Scope, Scopes, Value};
 use typst_library::introspection::Introspector;
 use typst_library::math::EquationElem;
 use typst_library::routines::Routines;
-use typst_syntax::{Source, Span, SyntaxMode, ast, parse, parse_code, parse_math};
+use typst_library::World;
+use typst_syntax::{
+    ast, parse, parse_code, parse_math, Source, Span, SyntaxKind, SyntaxMode,
+};
 use typst_utils::Protected;
 
 /// Evaluate a source file and return the resulting module.
@@ -66,6 +68,38 @@ pub fn eval(
     let context = Context::none();
     let scopes = Scopes::new(Some(world.library()));
     let root = source.root();
+
+    //let n = root.children().nth(0).unwrap();
+    //let n = n.children().nth(1).unwrap();
+    //let n = n.children().nth(0).unwrap();
+    //let n = n.children().nth(1).unwrap();
+
+    // FOR CLOSURE
+    //let n = n.children().nth(0).unwrap();
+    //let n = n.children().nth(1).unwrap();
+    //let n = n.children().nth(4).unwrap();
+    //let n = n.children().nth(2).unwrap();
+
+    //// inside codeblock
+    //let n = n.children().nth(0).unwrap();
+    //let n = n.children().nth(1).unwrap();
+    //let n = n.children().nth(0).unwrap();
+    //let n = n.children().nth(1).unwrap();
+    //MATHTEXT
+    //let n = n.children().nth(1).unwrap();
+
+    //let n = n.children().nth(2).unwrap();
+    //let n = n.children().nth(1).unwrap();
+    //let n = n.children().nth(0).unwrap();
+    //let n = n.children().nth(1).unwrap();
+
+    //for i in n.children() {
+    //    println!("{:?}", i.kind());
+    //    println!("{}", i.text());
+    //}
+
+    //println!("FOUND HERE.");
+
     let mut vm = Vm::new(engine, context.track(), scopes, root.span());
 
     // Check for well-formedness unless we are in trace mode.

@@ -1,4 +1,4 @@
-use typst_library::diag::{At, SourceResult, warning};
+use typst_library::diag::{warning, At, SourceResult};
 use typst_library::foundations::{
     Content, Label, NativeElement, Repr, Smart, Symbol, Unlabellable, Value,
 };
@@ -70,7 +70,10 @@ fn eval_markup<'a>(
                         ));
                     }
                 }
-                value => seq.push(value.display().spanned(expr.span())),
+
+                value => {
+                    seq.push(value.display().spanned(expr.span()));
+                }
             },
         }
 

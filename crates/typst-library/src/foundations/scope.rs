@@ -1,13 +1,13 @@
 use std::fmt::{self, Debug, Formatter};
 use std::hash::{Hash, Hasher};
 
-use ecow::{EcoString, eco_format};
-use indexmap::IndexMap;
+use ecow::{eco_format, EcoString};
 use indexmap::map::Entry;
+use indexmap::IndexMap;
 use rustc_hash::FxBuildHasher;
 use typst_syntax::Span;
 
-use crate::diag::{DeprecationSink, HintedStrResult, HintedString, StrResult, bail};
+use crate::diag::{bail, DeprecationSink, HintedStrResult, HintedString, StrResult};
 use crate::foundations::{
     Func, IntoValue, NativeElement, NativeFunc, NativeFuncData, NativeType, Value,
 };
@@ -22,12 +22,18 @@ pub struct Scopes<'a> {
     pub scopes: Vec<Scope>,
     /// The standard library.
     pub base: Option<&'a Library>,
+    pub top2: Scope,
 }
 
 impl<'a> Scopes<'a> {
     /// Create a new, empty hierarchy of scopes.
     pub fn new(base: Option<&'a Library>) -> Self {
-        Self { top: Scope::new(), scopes: vec![], base }
+        Self {
+            top: Scope::new(),
+            scopes: vec![],
+            base,
+            top2: Scope::new(),
+        }
     }
 
     /// Enter a new scope.
@@ -74,6 +80,7 @@ impl<'a> Scopes<'a> {
     /// Try to access a binding immutably in math.
     pub fn get_in_math(&self, var: &str) -> HintedStrResult<&Binding> {
         std::iter::once(&self.top)
+            .chain(std::iter::once(&self.top2))
             .chain(self.scopes.iter().rev())
             .find_map(|scope| scope.get(var))
             .or_else(|| {

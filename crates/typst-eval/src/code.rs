@@ -155,6 +155,7 @@ impl Eval for ast::Ident<'_> {
 
     fn eval(self, vm: &mut Vm) -> SourceResult<Self::Output> {
         let span = self.span();
+
         Ok(vm
             .scopes
             .get(&self)
@@ -348,7 +349,7 @@ impl Eval for ast::Contextual<'_> {
         let body = self.body();
 
         // Collect captured variables.
-        let captured = {
+        let (captured, captured_math) = {
             let mut visitor = CapturesVisitor::new(Some(&vm.scopes), Capturer::Context);
             visitor.visit(body.to_untyped());
             visitor.finish()
@@ -359,6 +360,7 @@ impl Eval for ast::Contextual<'_> {
             node: ClosureNode::Context(self.body().to_untyped().clone()),
             defaults: vec![],
             captured,
+            captured_math,
             num_pos_params: 0,
         };
 

@@ -47,6 +47,10 @@ impl Eval for ast::MathIdent<'_> {
 
     fn eval(self, vm: &mut Vm) -> SourceResult<Self::Output> {
         let span = self.span();
+
+        println!("SCOPES");
+        println!("{:#?}\n", vm.scopes);
+
         Ok(vm
             .scopes
             .get_in_math(&self)
