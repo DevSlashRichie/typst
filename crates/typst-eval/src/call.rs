@@ -624,7 +624,11 @@ mod tests {
 
     #[track_caller]
     fn test(scopes: &Scopes, text: &str, result: &[&str]) {
-        let mut visitor = CapturesVisitor::new(Some(scopes), Capturer::Function);
+        let mut visitor = CapturesVisitor::new(
+            Some(scopes),
+            Capturer::Function,
+            Scopes::new(scopes.base),
+        );
         let root = parse(text);
         visitor.visit(&root);
 
