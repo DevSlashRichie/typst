@@ -1,8 +1,7 @@
 use comemo::{Tracked, TrackedMut};
-use ecow::{EcoString, EcoVec, eco_format};
-use typst_library::World;
+use ecow::{eco_format, EcoString, EcoVec};
 use typst_library::diag::{
-    At, HintedStrResult, SourceDiagnostic, SourceResult, Trace, Tracepoint, bail, error,
+    bail, error, At, HintedStrResult, SourceDiagnostic, SourceResult, Trace, Tracepoint,
 };
 use typst_library::engine::{Engine, Sink, Traced};
 use typst_library::foundations::{
@@ -12,13 +11,14 @@ use typst_library::foundations::{
 use typst_library::introspection::Introspector;
 use typst_library::math::LrElem;
 use typst_library::routines::Routines;
+use typst_library::World;
 use typst_syntax::ast::{self, AstNode, Ident};
 use typst_syntax::{Span, Spanned, SyntaxNode};
 use typst_utils::{LazyHash, Protected};
 
 use crate::{
-    Access, Eval, FlowEvent, Route, Vm, call_method_mut, hint_if_shadowed_std,
-    is_mutating_method,
+    call_method_mut, hint_if_shadowed_std, is_mutating_method, Access, Eval, FlowEvent,
+    Route, Vm,
 };
 
 impl Eval for ast::FuncCall<'_> {
@@ -478,7 +478,6 @@ impl<'a> CapturesVisitor<'a> {
             Some(ast::Expr::Ident(ident)) => self.capture(ident.get(), Scopes::get),
             Some(ast::Expr::MathIdent(_ident)) => {
                 // Won't capture math idents. Closures will have access to global lib.
-                // OLD: self.capture(ident.get(), Scopes::get_in_math)
             }
 
             // Code and content blocks create a scope.
