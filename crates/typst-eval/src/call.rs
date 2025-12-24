@@ -149,7 +149,11 @@ impl Eval for ast::Closure<'_> {
 
         // Collect captured variables.
         let captured = {
-            let mut visitor = CapturesVisitor::new(Some(&vm.scopes), Capturer::Function);
+            let mut visitor = CapturesVisitor::new(
+                Some(&vm.scopes),
+                Capturer::Function,
+                Scopes::new(vm.scopes.base),
+            );
             visitor.visit(self.to_untyped());
             visitor.finish()
         };
@@ -198,7 +202,8 @@ pub fn eval_closure(
 
     // Don't leak the scopes from the call site. Instead, we use the scope
     // of captured variables we collected earlier.
-    let mut scopes = Scopes::new(None);
+    // We add our global library to the closure. Closures can have access to it.
+    let mut scopes = Scopes::new(Some(world.library()));
     scopes.top = closure.captured.clone();
 
     // Prepare the engine.
@@ -445,10 +450,14 @@ pub struct CapturesVisitor<'a> {
 
 impl<'a> CapturesVisitor<'a> {
     /// Create a new visitor for the given external scopes.
-    pub fn new(external: Option<&'a Scopes<'a>>, capturer: Capturer) -> Self {
+    pub fn new(
+        external: Option<&'a Scopes<'a>>,
+        capturer: Capturer,
+        internal: Scopes<'a>,
+    ) -> Self {
         Self {
             external,
-            internal: Scopes::new(None),
+            internal,
             captures: Scope::new(),
             capturer,
         }
@@ -467,8 +476,9 @@ impl<'a> CapturesVisitor<'a> {
             // actually bind a new name are handled below (individually through
             // the expressions that contain them).
             Some(ast::Expr::Ident(ident)) => self.capture(ident.get(), Scopes::get),
-            Some(ast::Expr::MathIdent(ident)) => {
-                self.capture(ident.get(), Scopes::get_in_math)
+            Some(ast::Expr::MathIdent(_ident)) => {
+                // Won't capture math idents. Closures will have access to global lib.
+                // OLD: self.capture(ident.get(), Scopes::get_in_math)
             }
 
             // Code and content blocks create a scope.

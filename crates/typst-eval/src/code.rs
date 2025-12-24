@@ -3,7 +3,7 @@ use typst_library::diag::{At, SourceResult, bail, error, warning};
 use typst_library::engine::Engine;
 use typst_library::foundations::{
     Array, Capturer, Closure, ClosureNode, Content, ContextElem, Dict, Func,
-    NativeElement, Selector, Str, Value, ops,
+    NativeElement, Scopes, Selector, Str, Value, ops,
 };
 use typst_library::introspection::{Counter, State};
 use typst_syntax::ast::{self, AstNode};
@@ -349,7 +349,11 @@ impl Eval for ast::Contextual<'_> {
 
         // Collect captured variables.
         let captured = {
-            let mut visitor = CapturesVisitor::new(Some(&vm.scopes), Capturer::Context);
+            let mut visitor = CapturesVisitor::new(
+                Some(&vm.scopes),
+                Capturer::Context,
+                Scopes::new(vm.scopes.base),
+            );
             visitor.visit(body.to_untyped());
             visitor.finish()
         };

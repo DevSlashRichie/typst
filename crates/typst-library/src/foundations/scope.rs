@@ -1,13 +1,13 @@
 use std::fmt::{self, Debug, Formatter};
 use std::hash::{Hash, Hasher};
 
-use ecow::{EcoString, eco_format};
-use indexmap::IndexMap;
+use ecow::{eco_format, EcoString};
 use indexmap::map::Entry;
+use indexmap::IndexMap;
 use rustc_hash::FxBuildHasher;
 use typst_syntax::Span;
 
-use crate::diag::{DeprecationSink, HintedStrResult, HintedString, StrResult, bail};
+use crate::diag::{bail, DeprecationSink, HintedStrResult, HintedString, StrResult};
 use crate::foundations::{
     Func, IntoValue, NativeElement, NativeFunc, NativeFuncData, NativeType, Value,
 };
